@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>LiveProof - Aadhaar Style Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif}
+  body{min-height:100vh;background:radial-gradient(circle at top,#101a2e,#05070d);color:#e6e9ef;padding:40px 16px}
+  .wrap{max-width:560px;margin:auto}
+  .header{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:6px}
+  .avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);
+          display:flex;align-items:center;justify-content:center;font-size:26px}
+  .header h1{font-size:22px;color:#fff}
+  .header p{font-size:11px;letter-spacing:2px;color:#10b981;margin-top:2px}
+  .divider{height:3px;background:linear-gradient(90deg,#10b981,transparent);margin:18px 0 28px;border-radius:2px}
+  h2.title{font-size:30px;text-align:center;margin-bottom:8px}
+  .sub{text-align:center;color:#9aa3b2;font-size:14px;margin-bottom:24px}
+  .card{background:#0f1730;border:1px solid #1f2a44;border-radius:14px;padding:26px}
+  .secure{display:flex;align-items:center;gap:10px;background:#0b2a23;border:1px solid #134e3a;
+          color:#10b981;padding:12px 14px;border-radius:10px;font-size:13px;margin-bottom:18px}
+  label{display:flex;align-items:center;gap:8px;font-size:14px;margin:14px 0 6px;color:#cdd3df}
+  input{width:100%;padding:12px 14px;background:#1a2240;border:1px solid #2a345a;border-radius:8px;
+        color:#fff;font-size:15px;outline:none}
+  input:focus{border-color:#10b981}
+  .hint{font-size:12px;color:#7e879b;margin-top:6px}
+  button{width:100%;margin-top:22px;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;
+         color:#022c22;background:linear-gradient(90deg,#10b981,#34d399);cursor:pointer}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  .footer{text-align:center;color:#7e879b;font-size:12px;margin-top:18px}
+  .footer a{color:#10b981;text-decoration:none}
+  .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none}
+  .alert.error{background:#3a1117;border:1px solid #7f1d1d;color:#fca5a5;display:block}
+  .alert.success{background:#0b2a23;border:1px solid #134e3a;color:#34d399;display:block}
+  .otp-box{display:none;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="avatar">👤</div>
+    <div>
+      <h1>LiveProof Authority</h1>
+      <p>GOVERNMENT-GRADE IDENTITY VERIFICATION</p>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <h2 class="title">Credential Authentication Gateway</h2>
+  <p class="sub">Verify your identity using your Name, Aadhaar Number and Email OTP.</p>
+
+  <div class="card">
+    <div class="secure">🔒 Your information is encrypted and never shared.</div>
+    <div id="msg" class="alert"></div>
+
+    <label>👤 Full Name</label>
+    <input id="name" placeholder="Enter your name" />
+
+    <label>🆔 Aadhaar Number</label>
+    <input id="aadhaar" maxlength="12" placeholder="12-digit Aadhaar" />
+    <div class="hint">12-digit Aadhaar number issued by UIDAI</div>
+
+    <label>✉️ Registered Email</label>
+    <input id="email" type="email" placeholder="you@example.com" />
+    <div class="hint">A One-Time Password will be sent to this email.</div>
+
+    <button id="sendBtn" onclick="sendOtp()">Send OTP</button>
+
+    <div id="otpBox" class="otp-box">
+      <label>🔑 Enter OTP</label>
+      <input id="otp" maxlength="6" placeholder="6-digit OTP" />
+      <button onclick="verifyOtp()">Verify OTP</button>
+    </div>
+
+    <div class="footer">
+      By continuing, you agree to identity verification under the<br>
+      <a href="#">LiveProof Terms of Use.</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const msg = document.getElementById('msg');
+function show(type, text){ msg.className = 'alert ' + type; msg.textContent = text; }
+
+async function sendOtp(){
+  const name    = document.getElementById('name').value.trim();
+  const aadhaar = document.getElementById('aadhaar').value.trim();
+  const email   = document.getElementById('email').value.trim();
+  const btn     = document.getElementById('sendBtn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try{
+    const r = await fetch('/send-otp', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, aadhaar, email})
+    });
+    const d = await r.json();
+    if(d.success){ show('success', d.message); document.getElementById('otpBox').style.display='block'; }
+    else show('error', d.message);
+  }catch(e){ show('error', 'Network error: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Resend OTP';
+}
+
+async function verifyOtp(){
+  const otp = document.getElementById('otp').value.trim();
+  const r = await fetch('/verify-otp', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({otp})
+  });
+  const d = await r.json();
+  show(d.success ? 'success' : 'error', d.message);
+
+  // ✅ Redirect if backend sends redirect
+  if(d.success && d.redirect){
+    window.location.href = d.redirect;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Liveness Check - LiveProof</title>
+<style>
+  body{background:#0b1020;color:#e6e9ef;font-family:'Segoe UI',Arial,sans-serif;text-align:center;padding:40px}
+  video{border:3px solid #10b981;border-radius:12px;width:320px;height:240px;margin:20px auto;display:block}
+  .error{border:3px solid red !important}
+</style>
+</head>
+<body>
+  <h2>🔒 Liveness Verification</h2>
+  <p id="actionText">Camera starting...</p>
+  <video id="camera" autoplay playsinline></video>
+  <div id="result"></div>
+
+<script>
+async function startCamera(){
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({video:true});
+    const video = document.getElementById('camera');
+    video.srcObject = stream;
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // send frame every 3 seconds
+    setInterval(async ()=>{
+      if(video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+
+      const frame = canvas.toDataURL("image/jpeg");
+
+      try{
+        const r = await fetch("/liveness-check", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({frame})
+        });
+        const d = await r.json();
+        if(d.success){
+          document.getElementById('result').textContent = "✅ " + d.message;
+          video.classList.remove("error");
+        }else{
+          document.getElementById('result').textContent = "❌ " + d.message;
+          video.classList.add("error");
+        }
+      }catch(e){
+        document.getElementById('result').textContent = "Network error: " + e.message;
+      }
+    },3000);
+
+  }catch(e){
+    document.getElementById('result').textContent = "Camera error: " + e.message;
+  }
+}
+
+startCamera();
+</script>
+</body>
+</html>
